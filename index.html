@@ -95,6 +95,13 @@
     font-weight:700; border:none; cursor:pointer;}
   .quick-pick:active{transform:scale(0.95);}
 
+  .exclude-label{font-size:0.78rem; color:var(--charcoal-soft); font-weight:600; margin-top:14px; margin-bottom:2px;}
+  .exclude-chips{display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;}
+  .exclude-chip{padding:6px 12px; border-radius:20px; background:var(--bg); color:var(--charcoal-soft); font-size:0.75rem;
+    font-weight:700; border:1.5px solid var(--stone); cursor:pointer; transition:background .2s ease, color .2s ease, border-color .2s ease;}
+  .exclude-chip.active{background:var(--incorrect); color:var(--incorrect-text); border-color:var(--incorrect-text);}
+  .exclude-chip:active{transform:scale(0.95);}
+
   .qcount-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
   .qcount-row input[type=number]{width:90px; padding:10px; border-radius:12px; border:1.5px solid var(--stone);
     background:var(--bg); font-size:1rem; font-weight:700; text-align:center; outline:none;}
@@ -147,7 +154,7 @@
       <div id="quizConfig">
         <div class="config-card">
           <div class="config-title">Choose topics</div>
-          <div class="config-hint">Toggle topics on, and set your own range for the number-based ones.</div>
+          <div class="config-hint">Toggle topics on, set your range, and exclude multipliers that are too easy.</div>
           <div id="topicList"></div>
         </div>
         <div class="config-card">
@@ -207,10 +214,12 @@
   'use strict';
 
   /* ---------------- DATA GENERATION ---------------- */
-  function genMultiplication(max){
+  function genMultiplication(max, excludeMultipliers){
     var out=[];
+    excludeMultipliers = excludeMultipliers || [];
     for(var i=1;i<=max;i++){
       for(var j=1;j<=15;j++){
+        if(excludeMultipliers.indexOf(j) !== -1) continue;
         out.push({expr:i+' × '+j, answer:i*j, group:'× '+i});
       }
     }
@@ -394,9 +403,9 @@
   /* ---------------- QUIZ CONFIG ---------------- */
   // Topics with a numeric "up to" range the user can customize
   var RANGE_TOPICS = {
-    multiplication: {label:'Multiplication', sub:'Tables 1 to N', def:15, min:1, max:30, quick:[10,15,20,30], suffix:'× 15'},
-    squares: {label:'Squares', sub:'1² up to N²', def:15, min:1, max:30, quick:[10,15,20,30], suffix:'²'},
-    cubes: {label:'Cubes', sub:'1³ up to N³', def:15, min:1, max:15, quick:[5,10,15], suffix:'³'}
+    multiplication: {label:'Multiplication', sub:'Tables 1 to N', def:15, min:1, max:30, quick:[10,15,20,30], hasExclude:true},
+    squares: {label:'Squares', sub:'1² up to N²', def:15, min:1, max:30, quick:[10,15,20,30]},
+    cubes: {label:'Cubes', sub:'1³ up to N³', def:15, min:1, max:15, quick:[5,10,15]}
   };
   // Topics that are just on/off (fixed data sets)
   var FLAT_TOPICS = {
@@ -406,6 +415,8 @@
 
   var selectedTopics = {multiplication:true, squares:true, cubes:false, fractions:false, reciprocals:false};
   var topicRanges = {multiplication:15, squares:15, cubes:10};
+  // Multipliers excluded from the multiplication quiz pool (off by default = ×1, ×2, ×10, ×11 skipped)
+  var excludedMultipliers = [1, 2, 10, 11];
 
   var topicList = document.getElementById('topicList');
 
@@ -455,6 +466,37 @@
     rangeBlock.appendChild(rangeRow);
     rangeBlock.appendChild(quickPicks);
 
+    // Exclude-multiplier chips, only for multiplication
+    if(meta.hasExclude){
+      var exLabel = document.createElement('div');
+      exLabel.className = 'exclude-label';
+      exLabel.textContent = 'Skip these multipliers (tap to toggle):';
+      rangeBlock.appendChild(exLabel);
+
+      var exChips = document.createElement('div');
+      exChips.className = 'exclude-chips';
+      for(var m=1; m<=15; m++){
+        (function(m){
+          var chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'exclude-chip' + (excludedMultipliers.indexOf(m) !== -1 ? ' active' : '');
+          chip.textContent = '×'+m;
+          chip.addEventListener('click', function(){
+            var idx = excludedMultipliers.indexOf(m);
+            if(idx === -1){
+              excludedMultipliers.push(m);
+              chip.classList.add('active');
+            } else {
+              excludedMultipliers.splice(idx, 1);
+              chip.classList.remove('active');
+            }
+          });
+          exChips.appendChild(chip);
+        })(m);
+      }
+      rangeBlock.appendChild(exChips);
+    }
+
     row.addEventListener('click', function(e){
       selectedTopics[key] = !selectedTopics[key];
       row.querySelector('.switch').classList.toggle('on', selectedTopics[key]);
@@ -503,7 +545,7 @@
     Object.keys(RANGE_TOPICS).forEach(function(key){
       if(!selectedTopics[key]) return;
       var n = topicRanges[key];
-      if(key==='multiplication') pool = pool.concat(genMultiplication(n));
+      if(key==='multiplication') pool = pool.concat(genMultiplication(n, excludedMultipliers));
       if(key==='squares') pool = pool.concat(genSquares(n));
       if(key==='cubes') pool = pool.concat(genCubes(n));
     });
@@ -511,7 +553,7 @@
     if(selectedTopics.reciprocals) pool = pool.concat(genReciprocals());
 
     if(pool.length === 0){
-      alert('Please select at least one topic.');
+      alert('Please select at least one topic (and make sure not everything is excluded).');
       return;
     }
 
