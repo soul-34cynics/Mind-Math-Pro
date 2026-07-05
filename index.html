@@ -386,8 +386,9 @@
           <form id="answerForm" autocomplete="off">
             <input type="number" inputmode="decimal" step="any" class="answer-input" id="answerInput" placeholder="Your answer" autofocus>
           </form>
-          <div class="feedback" id="feedback"></div>
-          <button class="btn-primary" id="nextBtn" style="display:none;">Next</button>
+          <<div class="feedback" id="feedback"></div>
+            <button class="btn-primary" id="nextBtn" style="display:none;">Next</button>
+            <button class="btn-secondary" id="stopQuizBtn" style="margin-top: 12px;">Stop Quiz</button>
         </div>
       </div>
 
@@ -466,6 +467,7 @@
     squares: {label:'Squares', sub:'1² to 30²'},
     cubes: {label:'Cubes', sub:'1³ to 15³'},
     fractions: {label:'Fractions', sub:'Common fractions → decimals'}
+    charts: {label:'Visual Charts', sub:'Reference sheets & infographic tables'}
   };
 
   /* ---------------- REVIEW PAGE ---------------- */
@@ -497,27 +499,54 @@
     var items = DATA[currentTopic];
 
     if(currentTopic === 'multiplication'){
-      // group by base number for readability
-      for(var i=1;i<=30;i++){
-        var label = document.createElement('div');
-        label.className = 'section-label';
-        label.textContent = 'Table of ' + i;
-        reviewContent.appendChild(label);
+  for(var i=1;i<=30;i++){
+    // Create a native collapsible accordion container
+    var details = document.createElement('details');
+    details.style.marginBottom = "12px";
+    
+    var summary = document.createElement('summary');
+    summary.className = 'section-label';
+    summary.style.cursor = 'pointer';
+    summary.style.outline = 'none';
+    summary.style.listStyle = 'none'; // Removes default browser arrow
+    summary.textContent = 'Table of ' + i + ' ▾';
+    
+    var grid = document.createElement('div');
+    grid.className = 'grid';
+    grid.style.marginTop = '8px';
+    
+    var currentGroup = '× '+i;
+    items.filter(function(it){ return it.group === currentGroup; }).forEach(function(it){
+      grid.appendChild(makeCard(it));
+    });
+    
+    details.appendChild(summary);
+    details.appendChild(grid);
+    reviewContent.appendChild(details);
 
-        var grid = document.createElement('div');
-        grid.className = 'grid';
-        items.filter(function(it){ return it.group === '× '+i; }).forEach(function(it){
-          grid.appendChild(makeCard(it));
-        });
-        reviewContent.appendChild(grid);
-      }
-    } else {
-      var grid2 = document.createElement('div');
-      grid2.className = 'grid' + (currentTopic==='fractions' ? ' fractions':'');
-      items.forEach(function(it){ grid2.appendChild(makeCard(it)); });
-      reviewContent.appendChild(grid2);
-    }
+    // Inside renderReview(), right before the end of the function:
+if(currentTopic === 'charts') {
+  var chartWrap = document.createElement('div');
+  chartWrap.style.display = 'flex';
+  chartWrap.style.flexDirection = 'column';
+  chartWrap.style.gap = '16px';
+
+  // Array of your image filenames. Place these images in your GitHub repository folder!
+  var images = ['table_chart.png', 'squares_chart.png', 'fractions_chart.png']; 
+
+  images.forEach(function(src){
+    var img = document.createElement('img');
+    img.src = src;
+    img.style.width = '100%';
+    img.style.borderRadius = '12px';
+    img.style.boxShadow = 'var(--shadow)';
+    img.alt = 'Math reference chart';
+    chartWrap.appendChild(img);
+  });
+  reviewContent.appendChild(chartWrap);
+}
   }
+}
 
   function makeCard(it){
     var card = document.createElement('div');
@@ -580,6 +609,12 @@
     }
     return arr;
   }
+  document.getElementById('stopQuizBtn').addEventListener('click', function(){
+  if(confirm('Are you sure you want to stop the quiz? Your current progress will be lost.')) {
+    document.getElementById('quizActive').style.display = 'none';
+    document.getElementById('quizConfig').style.display = 'block';
+  }
+});
 
   document.getElementById('startQuizBtn').addEventListener('click', function(){
     var topics = Object.keys(selectedTopics).filter(function(k){return selectedTopics[k];});
