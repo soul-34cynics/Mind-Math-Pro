@@ -210,7 +210,7 @@
   function genMultiplication(max){
     var out=[];
     for(var i=1;i<=max;i++){
-      for(var j=1;j<=12;j++){
+      for(var j=1;j<=15;j++){
         out.push({expr:i+' × '+j, answer:i*j, group:'× '+i});
       }
     }
@@ -270,7 +270,7 @@
   };
 
   var TOPIC_META = {
-    multiplication: {label:'Multiplication', sub:'1×1 to 30×12'},
+    multiplication: {label:'Multiplication', sub:'1×1 to 30×15'},
     squares: {label:'Squares', sub:'1² to 30²'},
     cubes: {label:'Cubes', sub:'1³ to 15³'},
     fractions: {label:'Fractions', sub:'Common fractions → decimals'},
@@ -394,7 +394,7 @@
   /* ---------------- QUIZ CONFIG ---------------- */
   // Topics with a numeric "up to" range the user can customize
   var RANGE_TOPICS = {
-    multiplication: {label:'Multiplication', sub:'Tables 1 to N', def:15, min:1, max:30, quick:[10,15,20,30], suffix:'× 12'},
+    multiplication: {label:'Multiplication', sub:'Tables 1 to N', def:15, min:1, max:30, quick:[10,15,20,30], suffix:'× 15'},
     squares: {label:'Squares', sub:'1² up to N²', def:15, min:1, max:30, quick:[10,15,20,30], suffix:'²'},
     cubes: {label:'Cubes', sub:'1³ up to N³', def:15, min:1, max:15, quick:[5,10,15], suffix:'³'}
   };
