@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="MathCards">
 <link rel="manifest" href="data:application/manifest+json,{
-  "name": "MathCards",
-  "short_name": "MathCards",
+  "name": "Mind-Math",
+  "short_name": "Mind-Math",
   "start_url": ".",
   "display": "standalone",
   "background_color": "%23f4f1ea",
@@ -694,15 +694,7 @@
 
   /* ---------------- INLINE SERVICE WORKER ---------------- */
   if('serviceWorker' in navigator){
-    var swCode = "
-      self.addEventListener('install', function(e){ self.skipWaiting(); });
-      self.addEventListener('activate', function(e){ self.clients.claim(); });
-      self.addEventListener('fetch', function(e){
-        e.respondWith(
-          fetch(e.request).catch(function(){ return caches.match(e.request); })
-        );
-      });
-    ";
+    var swCode = "self.addEventListener('install', function(e){ self.skipWaiting(); });self.addEventListener('activate', function(e){ self.clients.claim(); });self.addEventListener('fetch', function(e){e.respondWith(fetch(e.request).catch(function(){ return caches.match(e.request); }));});";
     try{
       var blob = new Blob([swCode], {type:'application/javascript'});
       var swUrl = URL.createObjectURL(blob);
