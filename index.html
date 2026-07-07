@@ -56,6 +56,8 @@
   .card .expr{font-size:0.82rem; color:var(--charcoal-soft); font-weight:500;}
   .card .result{font-size:1.4rem; font-weight:700; color:var(--sage-dark); letter-spacing:-0.02em;}
   .section-label{font-size:0.75rem; text-transform:uppercase; letter-spacing:.08em; color:var(--stone-dark); font-weight:700; margin:0; padding:6px 2px;}
+  .info-sentence{background:var(--sage-light); color:var(--sage-dark); font-weight:600; font-size:0.88rem;
+    padding:14px 16px; border-radius:14px; margin-bottom:16px; line-height:1.5;}
   details{margin-bottom:12px;}
   details > .grid{margin-top:8px;}
   summary::-webkit-details-marker{display:none;}
@@ -85,11 +87,13 @@
   .range-block{padding:0 4px 16px; border-bottom:1px solid var(--bg); display:none;}
   .range-block.show{display:block;}
   .range-block:last-child{border-bottom:none;}
-  .range-row{display:flex; align-items:center; gap:10px; margin-top:8px;}
+  .range-row{display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;}
   .range-row label{font-size:0.8rem; color:var(--charcoal-soft); font-weight:600; white-space:nowrap;}
   .range-row input[type=number]{width:64px; padding:8px 10px; border-radius:10px; border:1.5px solid var(--stone);
     background:var(--bg); font-size:0.95rem; font-weight:700; color:var(--charcoal); text-align:center; outline:none;}
-  .range-row input[type=number]:focus{border-color:var(--sage);}
+  .range-row input[type=text]{flex:1; min-width:120px; padding:8px 10px; border-radius:10px; border:1.5px solid var(--stone);
+    background:var(--bg); font-size:0.85rem; font-weight:600; color:var(--charcoal); outline:none;}
+  .range-row input:focus{border-color:var(--sage);}
   .quick-picks{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
   .quick-pick{padding:6px 12px; border-radius:20px; background:var(--sage-light); color:var(--sage-dark); font-size:0.75rem;
     font-weight:700; border:none; cursor:pointer;}
@@ -118,9 +122,10 @@
   .progress-fill{height:100%; background:var(--sage); transition:width .3s ease;}
   .question-card{background:var(--card); border-radius:var(--radius); padding:36px 24px; text-align:center; box-shadow:var(--shadow-lg); margin-bottom:24px;}
   .question-card .q-label{font-size:0.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--stone-dark); font-weight:700; margin-bottom:12px;}
-  .question-card .q-expr{font-size:2.2rem; font-weight:700; letter-spacing:-0.02em; color:var(--charcoal);}
-  .answer-input{width:100%; font-size:1.8rem; text-align:center; padding:18px; border-radius:16px; border:2px solid var(--stone);
-    background:var(--card); color:var(--charcoal); font-weight:700; outline:none; transition:border-color .2s ease, background .3s ease; -moz-appearance:textfield;}
+  .question-card .q-topic{font-size:0.7rem; color:var(--sage-dark); font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em;}
+  .question-card .q-expr{font-size:2.0rem; font-weight:700; letter-spacing:-0.02em; color:var(--charcoal);}
+  .answer-input{width:100%; font-size:1.6rem; text-align:center; padding:18px; border-radius:16px; border:2px solid var(--stone);
+    background:var(--card); color:var(--charcoal); font-weight:700; outline:none; transition:border-color .2s ease, background .3s ease;}
   .answer-input::-webkit-outer-spin-button, .answer-input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
   .answer-input:focus{border-color:var(--sage);}
   .answer-input.correct{background:var(--correct); border-color:var(--correct-text); color:var(--correct-text);}
@@ -128,6 +133,7 @@
   .feedback{margin-top:14px; text-align:center; font-weight:600; font-size:0.95rem; min-height:24px;}
   .feedback.correct{color:var(--correct-text);}
   .feedback.incorrect{color:var(--incorrect-text);}
+  .submit-btn{margin-top:14px;}
 
   .summary-card{background:var(--card); border-radius:var(--radius); padding:40px 28px; text-align:center; box-shadow:var(--shadow-lg);}
   .summary-card .score-num{font-size:3.4rem; font-weight:800; color:var(--sage-dark); letter-spacing:-0.03em;}
@@ -154,7 +160,7 @@
       <div id="quizConfig">
         <div class="config-card">
           <div class="config-title">Choose topics</div>
-          <div class="config-hint">Toggle topics on, set your range, and exclude multipliers that are too easy.</div>
+          <div class="config-hint">Toggle topics on, set ranges, and exclude anything too easy.</div>
           <div id="topicList"></div>
         </div>
         <div class="config-card">
@@ -172,11 +178,13 @@
         <div class="quiz-wrap">
           <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
           <div class="question-card">
+            <div class="q-topic" id="qTopic"></div>
             <div class="q-label" id="qCounter">Question 1</div>
             <div class="q-expr" id="qExpr">?</div>
           </div>
           <form id="answerForm" autocomplete="off">
-            <input type="number" inputmode="decimal" step="any" class="answer-input" id="answerInput" placeholder="Your answer" autofocus>
+            <input type="text" inputmode="decimal" class="answer-input" id="answerInput" placeholder="Your answer" autofocus>
+            <button type="submit" class="btn-primary submit-btn" id="submitBtn">Submit</button>
           </form>
           <div class="feedback" id="feedback"></div>
           <button class="btn-primary" id="nextBtn" style="display:none;">Next</button>
@@ -213,26 +221,43 @@
 (function(){
   'use strict';
 
-  /* ---------------- DATA GENERATION ---------------- */
+  /* ---------------- BASIC GENERATORS ---------------- */
   function genMultiplication(max, excludeMultipliers){
     var out=[];
     excludeMultipliers = excludeMultipliers || [];
     for(var i=1;i<=max;i++){
-      for(var j=1;j<=15;j++){
+      for(var j=1;j<=20;j++){
         if(excludeMultipliers.indexOf(j) !== -1) continue;
-        out.push({expr:i+' × '+j, answer:i*j, group:'× '+i});
+        out.push({expr:i+' × '+j, answer:i*j, group:'× '+i, type:'num'});
       }
     }
     return out;
   }
-  function genSquares(max){
+  function genSquares(max, exclude){
+    exclude = exclude || [];
     var out=[];
-    for(var i=1;i<=max;i++) out.push({expr:i+'²', answer:i*i});
+    for(var i=1;i<=max;i++){
+      if(exclude.indexOf(i)!==-1) continue;
+      out.push({expr:i+'²', answer:i*i, type:'num'});
+    }
     return out;
   }
-  function genCubes(max){
+  function genCubes(max, exclude){
+    exclude = exclude || [];
     var out=[];
-    for(var i=1;i<=max;i++) out.push({expr:i+'³', answer:i*i*i});
+    for(var i=1;i<=max;i++){
+      if(exclude.indexOf(i)!==-1) continue;
+      out.push({expr:i+'³', answer:i*i*i, type:'num'});
+    }
+    return out;
+  }
+  function genPowers(base, maxExp, exclude){
+    exclude = exclude || [];
+    var out=[];
+    for(var e=1;e<=maxExp;e++){
+      if(exclude.indexOf(e)!==-1) continue;
+      out.push({expr:base+'^'+e, answer:Math.pow(base,e), type:'num'});
+    }
     return out;
   }
   function genFractions(){
@@ -241,53 +266,176 @@
     denoms.forEach(function(d){
       for(var n=1;n<d;n++){
         var val = Math.round((n/d)*1000)/1000;
-        out.push({expr:n+'/'+d, answer:val});
+        out.push({expr:n+'/'+d, answer:val, type:'num'});
       }
     });
     return out;
   }
-  // Reciprocals as percentages: 1/n for n=2..16, plus common multiples (from the "Multiples of Reciprocals" chart)
-  function genReciprocals(){
+  // Reciprocals up to 12, both directions (percent->fraction, fraction->percent)
+  function genReciprocals(maxDenom, exclude){
+    maxDenom = maxDenom || 12;
+    exclude = exclude || [];
     var out=[];
     var seen={};
-    for(var n=2;n<=16;n++){
+    for(var n=2;n<=maxDenom;n++){
+      if(exclude.indexOf(n)!==-1) continue;
       var pct = Math.round((100/n)*100)/100;
       var key='1/'+n;
-      out.push({expr:key, answer:pct});
+      out.push({expr:key, answer:pct, type:'num'});
       seen[key]=true;
     }
     var extraDenoms=[4,5,8];
     extraDenoms.forEach(function(d){
+      if(d>maxDenom) return;
       for(var num=1; num<d; num++){
         var key2 = num+'/'+d;
         if(seen[key2]) return;
         var pct2 = Math.round((num/d*100)*100)/100;
-        out.push({expr:key2, answer:pct2});
+        out.push({expr:key2, answer:pct2, type:'num'});
         seen[key2]=true;
       }
     });
     return out;
   }
+  function reciprocalBaseList(maxDenom, exclude){
+    // returns [{n,d,pct}]
+    maxDenom = maxDenom || 12;
+    exclude = exclude || [];
+    var list=[];
+    var seen={};
+    for(var n=2;n<=maxDenom;n++){
+      if(exclude.indexOf(n)!==-1) continue;
+      var pct = Math.round((100/n)*10000)/10000;
+      list.push({n:1,d:n,pct:pct});
+      seen['1/'+n]=true;
+    }
+    [4,5,8].forEach(function(d){
+      if(d>maxDenom) return;
+      for(var num=1; num<d; num++){
+        var key='1/'? null:null;
+        var k=num+'/'+d;
+        if(seen[k]) return;
+        var pct2 = Math.round((num/d*100)*10000)/10000;
+        list.push({n:num,d:d,pct:pct2});
+        seen[k]=true;
+      }
+    });
+    return list;
+  }
+  function genReciprocalsBothWays(maxDenom, exclude){
+    var base = reciprocalBaseList(maxDenom, exclude);
+    var out=[];
+    base.forEach(function(it){
+      out.push({expr:'What is '+it.n+'/'+it.d+' as a %?', answer:it.pct, type:'num'});
+      out.push({expr:'What fraction (n/d) equals '+it.pct+'%?', answer:it.n+'/'+it.d, type:'fraction', fVal: it.n/it.d});
+    });
+    return out;
+  }
+  function genComplement100(exclude){
+    exclude = exclude || [];
+    var out=[];
+    for(var n=1;n<=99;n++){
+      if(exclude.indexOf(n)!==-1) continue;
+      out.push({expr:'Complement of '+n+' (to 100)', answer:100-n, type:'num'});
+    }
+    return out;
+  }
+  function genFactorPairs(max, exclude){
+    exclude = exclude || [];
+    max = max || 20;
+    var out=[];
+    for(var i=2;i<=max;i++){
+      if(exclude.indexOf(i)!==-1) continue;
+      for(var j=i;j<=max;j++){
+        if(exclude.indexOf(j)!==-1) continue;
+        out.push({expr:'Product = '+(i*j)+'  (enter factors as a,b)', answer:[i,j], type:'pair'});
+      }
+    }
+    return out;
+  }
+  function genSumProduct(max, exclude){
+    exclude = exclude || [];
+    max = max || 20;
+    var out=[];
+    for(var a=2;a<=max;a++){
+      if(exclude.indexOf(a)!==-1) continue;
+      for(var b=a+1;b<=max;b++){
+        if(exclude.indexOf(b)!==-1) continue;
+        out.push({expr:'Sum = '+(a+b)+', Product = '+(a*b)+'  (enter numbers as a,b)', answer:[a,b], type:'pair'});
+      }
+    }
+    return out;
+  }
+  function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function randDigits(digits){
+    var min = Math.pow(10, digits-1);
+    var max = Math.pow(10, digits)-1;
+    return randInt(min,max);
+  }
+  function genAddition(n, digits, count){
+    n = n||2; digits = digits||4; count = count||12;
+    var out=[];
+    for(var q=0;q<count;q++){
+      var nums=[];
+      for(var i=0;i<n;i++) nums.push(randDigits(digits));
+      var sum = nums.reduce(function(a,b){return a+b;},0);
+      out.push({expr:'Add: '+nums.join(' + '), answer:sum, type:'num'});
+    }
+    return out;
+  }
+  function genSubtraction(n, digits, count){
+    n = n||2; digits = digits||4; count = count||12;
+    var out=[];
+    for(var q=0;q<count;q++){
+      var nums=[];
+      for(var i=0;i<n;i++) nums.push(randDigits(digits));
+      var res = nums[0];
+      for(var i2=1;i2<nums.length;i2++) res -= nums[i2];
+      out.push({expr:'Subtract: '+nums.join(' - '), answer:res, type:'num'});
+    }
+    return out;
+  }
+  function genPercentage(count){
+    count = count || 12;
+    var out=[];
+    for(var q=0;q<count;q++){
+      if(Math.random() < 0.5){
+        var pct = randInt(1,99);
+        var base = randInt(50,9999);
+        var ans = Math.round((pct*base/100)*100)/100;
+        out.push({expr:pct+'% of '+base, answer:ans, type:'num'});
+      } else {
+        var partVal = randInt(10,9999);
+        var wholeVal = randInt(partVal+1, partVal+9999);
+        var ans2 = Math.round((partVal/wholeVal*100)*100)/100;
+        out.push({expr:partVal+' is what percent of '+wholeVal+'?', answer:ans2, type:'num'});
+      }
+    }
+    return out;
+  }
 
-  // Fixed full datasets for the Review page
+  /* ---------------- REVIEW PAGE DATA ---------------- */
   var REVIEW_DATA = {
     multiplication: genMultiplication(30),
     squares: genSquares(30),
     cubes: genCubes(15),
+    powers: genPowers(2,12).concat(genPowers(3,8)),
     fractions: genFractions(),
-    reciprocals: genReciprocals()
+    reciprocals: genReciprocals(12)
   };
 
   var TOPIC_META = {
-    multiplication: {label:'Multiplication', sub:'1×1 to 30×15'},
+    multiplication: {label:'Multiplication', sub:'1×1 to 30×20'},
     squares: {label:'Squares', sub:'1² to 30²'},
     cubes: {label:'Cubes', sub:'1³ to 15³'},
+    powers: {label:'Powers', sub:'Powers of 2 and 3'},
     fractions: {label:'Fractions', sub:'Common fractions → decimals'},
     reciprocals: {label:'Reciprocals %', sub:'1/n and common fractions as %'},
     charts: {label:'Charts', sub:'Reference sheets & infographic tables'}
   };
 
-  /* ---------------- REVIEW PAGE ---------------- */
+  var INFO_SENTENCE = "Squares upto 25, Cubes upto 12, Powers of 2 till 12th power and Powers of 3 upto 8th power";
+
   var reviewTabs = document.getElementById('reviewTabs');
   var reviewContent = document.getElementById('reviewContent');
   var currentTopic = 'multiplication';
@@ -307,12 +455,20 @@
   });
 
   function fmtNum(n){
+    if(typeof n === 'string') return n;
     if(Number.isInteger(n)) return String(n);
     return (Math.round(n*1000)/1000).toString();
   }
 
   function renderReview(){
     reviewContent.innerHTML = '';
+
+    if(currentTopic === 'squares' || currentTopic === 'cubes' || currentTopic === 'powers'){
+      var info = document.createElement('div');
+      info.className = 'info-sentence';
+      info.textContent = INFO_SENTENCE;
+      reviewContent.appendChild(info);
+    }
 
     if(currentTopic === 'multiplication'){
       var items = REVIEW_DATA.multiplication;
@@ -340,7 +496,6 @@
       chartWrap.style.display = 'flex';
       chartWrap.style.flexDirection = 'column';
       chartWrap.style.gap = '16px';
-      // Make sure these image files sit next to index.html in your repo, with these exact names
       var images = ['t-1-10.png','t-10-20.png','t-20-30.png','powers.png', 'sqaures.png', 'cubes.png', 'reciprocals-1.png', 'reciprocals-2.png', 'multiples-of-reciprocals.png'];
       images.forEach(function(src){
         var img = document.createElement('img');
@@ -401,24 +556,41 @@
   }
 
   /* ---------------- QUIZ CONFIG ---------------- */
-  // Topics with a numeric "up to" range the user can customize
+  // Topics with a numeric "up to" range plus optional exclude list
   var RANGE_TOPICS = {
-    multiplication: {label:'Multiplication', sub:'Tables 1 to N', def:15, min:1, max:30, quick:[10,15,20,30], hasExclude:true},
-    squares: {label:'Squares', sub:'1² up to N²', def:15, min:1, max:30, quick:[10,15,20,30]},
-    cubes: {label:'Cubes', sub:'1³ up to N³', def:15, min:1, max:15, quick:[5,10,15]}
+    multiplication: {label:'Multiplication', sub:'Tables 1 to N (×1 to ×20)', def:15, min:1, max:30, quick:[10,15,20,30], excludeHint:'Exclude multipliers, e.g. 1,2,10,11'},
+    squares: {label:'Squares', sub:'1² up to N²', def:25, min:1, max:30, quick:[10,15,25,30], excludeHint:'Exclude numbers, e.g. 1,2'},
+    cubes: {label:'Cubes', sub:'1³ up to N³', def:12, min:1, max:15, quick:[5,10,12,15], excludeHint:'Exclude numbers, e.g. 1,2'},
+    powers2: {label:'Powers of 2', sub:'2^1 up to 2^N', def:12, min:1, max:16, quick:[8,10,12,16], excludeHint:'Exclude exponents, e.g. 1,2'},
+    powers3: {label:'Powers of 3', sub:'3^1 up to 3^N', def:8, min:1, max:10, quick:[5,8,10], excludeHint:'Exclude exponents, e.g. 1,2'},
+    reciprocals: {label:'Reciprocals % (both ways)', sub:'1/n up to N, asked both directions', def:12, min:2, max:16, quick:[10,12,16], excludeHint:'Exclude denominators, e.g. 2,10'},
+    factorPairs: {label:'Find the Factors', sub:'Given a product, enter the two factors', def:20, min:4, max:30, quick:[12,20,30], excludeHint:'Exclude numbers, e.g. 1'},
+    sumProduct: {label:'Sum & Product', sub:'Given sum & product, find both numbers', def:20, min:4, max:30, quick:[12,20,30], excludeHint:'Exclude numbers, e.g. 1'}
   };
-  // Topics that are just on/off (fixed data sets)
+  // Flat on/off topics (fixed data)
   var FLAT_TOPICS = {
     fractions: {label:'Fractions', sub:'Common fractions → decimals'},
-    reciprocals: {label:'Reciprocals %', sub:'1/n and common fractions as %'}
+    complement100: {label:'Complements to 100', sub:'Given N, answer 100 - N'},
+    percentage: {label:'Percentage Calculations', sub:'X% of Y, and A is what % of B'}
+  };
+  // Count-based topics (addition / subtraction)
+  var COUNT_TOPICS = {
+    addition: {label:'Addition', sub:'Sum of N 4-digit numbers', defN:2},
+    subtraction: {label:'Subtraction', sub:'Subtract N 4-digit numbers', defN:2}
   };
 
-  var selectedTopics = {multiplication:true, squares:true, cubes:false, fractions:false, reciprocals:false};
-  var topicRanges = {multiplication:15, squares:15, cubes:10};
-  // Multipliers excluded from the multiplication quiz pool (off by default = ×1, ×2, ×10, ×11 skipped)
-  var excludedMultipliers = [1, 2, 10, 11];
+  var selectedTopics = {multiplication:true, squares:true, cubes:false, powers2:false, powers3:false,
+    reciprocals:false, factorPairs:false, sumProduct:false, fractions:false, complement100:false,
+    percentage:false, addition:false, subtraction:false};
+  var topicRanges = {multiplication:15, squares:25, cubes:12, powers2:12, powers3:8, reciprocals:12, factorPairs:20, sumProduct:20};
+  var topicExcludes = {multiplication:[1,2,10,11], squares:[], cubes:[], powers2:[], powers3:[], reciprocals:[], factorPairs:[], sumProduct:[]};
+  var topicCounts = {addition:2, subtraction:2};
 
   var topicList = document.getElementById('topicList');
+
+  function parseExcludeList(str){
+    return str.split(',').map(function(s){return parseInt(s.trim(),10);}).filter(function(n){return !isNaN(n);});
+  }
 
   Object.keys(RANGE_TOPICS).forEach(function(key){
     var meta = RANGE_TOPICS[key];
@@ -466,30 +638,44 @@
     rangeBlock.appendChild(rangeRow);
     rangeBlock.appendChild(quickPicks);
 
-    // Exclude-multiplier chips, only for multiplication
-    if(meta.hasExclude){
-      var exLabel = document.createElement('div');
-      exLabel.className = 'exclude-label';
-      exLabel.textContent = 'Skip these multipliers (tap to toggle):';
-      rangeBlock.appendChild(exLabel);
+    // Exclude text input, generic for every range topic
+    var exLabel = document.createElement('div');
+    exLabel.className = 'exclude-label';
+    exLabel.textContent = meta.excludeHint || 'Exclude numbers (comma separated)';
+    rangeBlock.appendChild(exLabel);
 
+    var exRow = document.createElement('div');
+    exRow.className = 'range-row';
+    var exInput = document.createElement('input');
+    exInput.type = 'text';
+    exInput.placeholder = 'e.g. 1,2,10';
+    exInput.value = topicExcludes[key].join(',');
+    exInput.addEventListener('input', function(){
+      topicExcludes[key] = parseExcludeList(exInput.value);
+    });
+    exRow.appendChild(exInput);
+    rangeBlock.appendChild(exRow);
+
+    // Special: multiplication also gets quick exclude chips
+    if(key === 'multiplication'){
       var exChips = document.createElement('div');
       exChips.className = 'exclude-chips';
-      for(var m=1; m<=15; m++){
+      for(var m=1; m<=20; m++){
         (function(m){
           var chip = document.createElement('button');
           chip.type = 'button';
-          chip.className = 'exclude-chip' + (excludedMultipliers.indexOf(m) !== -1 ? ' active' : '');
+          chip.className = 'exclude-chip' + (topicExcludes.multiplication.indexOf(m) !== -1 ? ' active' : '');
           chip.textContent = '×'+m;
           chip.addEventListener('click', function(){
-            var idx = excludedMultipliers.indexOf(m);
+            var idx = topicExcludes.multiplication.indexOf(m);
             if(idx === -1){
-              excludedMultipliers.push(m);
+              topicExcludes.multiplication.push(m);
               chip.classList.add('active');
             } else {
-              excludedMultipliers.splice(idx, 1);
+              topicExcludes.multiplication.splice(idx, 1);
               chip.classList.remove('active');
             }
+            exInput.value = topicExcludes.multiplication.join(',');
           });
           exChips.appendChild(chip);
         })(m);
@@ -497,7 +683,7 @@
       rangeBlock.appendChild(exChips);
     }
 
-    row.addEventListener('click', function(e){
+    row.addEventListener('click', function(){
       selectedTopics[key] = !selectedTopics[key];
       row.querySelector('.switch').classList.toggle('on', selectedTopics[key]);
       rangeBlock.classList.toggle('show', selectedTopics[key]);
@@ -521,6 +707,44 @@
     topicList.appendChild(row);
   });
 
+  Object.keys(COUNT_TOPICS).forEach(function(key){
+    var meta = COUNT_TOPICS[key];
+    var wrap = document.createElement('div');
+    var row = document.createElement('div');
+    row.className = 'check-row';
+    row.innerHTML = '<div><div class="label">'+meta.label+'</div><div class="sub">'+meta.sub+'</div></div>' +
+                     '<div class="switch '+(selectedTopics[key]?'on':'')+'" data-topic="'+key+'"></div>';
+
+    var rangeBlock = document.createElement('div');
+    rangeBlock.className = 'range-block' + (selectedTopics[key] ? ' show' : '');
+    var rangeRow = document.createElement('div');
+    rangeRow.className = 'range-row';
+    rangeRow.innerHTML = '<label>How many numbers (N):</label>';
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.min = 2;
+    input.max = 6;
+    input.value = topicCounts[key];
+    input.addEventListener('input', function(){
+      var v = parseInt(input.value,10);
+      if(isNaN(v)) return;
+      if(v<2) v=2; if(v>6) v=6;
+      topicCounts[key]=v;
+    });
+    rangeRow.appendChild(input);
+    rangeBlock.appendChild(rangeRow);
+
+    row.addEventListener('click', function(){
+      selectedTopics[key] = !selectedTopics[key];
+      row.querySelector('.switch').classList.toggle('on', selectedTopics[key]);
+      rangeBlock.classList.toggle('show', selectedTopics[key]);
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(rangeBlock);
+    topicList.appendChild(wrap);
+  });
+
   var quizState = null;
   var DEFAULT_QUESTION_COUNT = 15;
 
@@ -542,15 +766,19 @@
   document.getElementById('startQuizBtn').addEventListener('click', function(){
     var pool = [];
 
-    Object.keys(RANGE_TOPICS).forEach(function(key){
-      if(!selectedTopics[key]) return;
-      var n = topicRanges[key];
-      if(key==='multiplication') pool = pool.concat(genMultiplication(n, excludedMultipliers));
-      if(key==='squares') pool = pool.concat(genSquares(n));
-      if(key==='cubes') pool = pool.concat(genCubes(n));
-    });
-    if(selectedTopics.fractions) pool = pool.concat(genFractions());
-    if(selectedTopics.reciprocals) pool = pool.concat(genReciprocals());
+    if(selectedTopics.multiplication) pool = pool.concat(genMultiplication(topicRanges.multiplication, topicExcludes.multiplication).map(withTopic('Multiplication')));
+    if(selectedTopics.squares) pool = pool.concat(genSquares(topicRanges.squares, topicExcludes.squares).map(withTopic('Squares')));
+    if(selectedTopics.cubes) pool = pool.concat(genCubes(topicRanges.cubes, topicExcludes.cubes).map(withTopic('Cubes')));
+    if(selectedTopics.powers2) pool = pool.concat(genPowers(2, topicRanges.powers2, topicExcludes.powers2).map(withTopic('Powers of 2')));
+    if(selectedTopics.powers3) pool = pool.concat(genPowers(3, topicRanges.powers3, topicExcludes.powers3).map(withTopic('Powers of 3')));
+    if(selectedTopics.reciprocals) pool = pool.concat(genReciprocalsBothWays(topicRanges.reciprocals, topicExcludes.reciprocals).map(withTopic('Reciprocals')));
+    if(selectedTopics.factorPairs) pool = pool.concat(genFactorPairs(topicRanges.factorPairs, topicExcludes.factorPairs).map(withTopic('Find the Factors')));
+    if(selectedTopics.sumProduct) pool = pool.concat(genSumProduct(topicRanges.sumProduct, topicExcludes.sumProduct).map(withTopic('Sum & Product')));
+    if(selectedTopics.fractions) pool = pool.concat(genFractions().map(withTopic('Fractions')));
+    if(selectedTopics.complement100) pool = pool.concat(genComplement100().map(withTopic('Complements to 100')));
+    if(selectedTopics.percentage) pool = pool.concat(genPercentage(20).map(withTopic('Percentage')));
+    if(selectedTopics.addition) pool = pool.concat(genAddition(topicCounts.addition, 4, 20).map(withTopic('Addition')));
+    if(selectedTopics.subtraction) pool = pool.concat(genSubtraction(topicCounts.subtraction, 4, 20).map(withTopic('Subtraction')));
 
     if(pool.length === 0){
       alert('Please select at least one topic (and make sure not everything is excluded).');
@@ -575,25 +803,42 @@
     showQuestion();
   });
 
+  function withTopic(label){
+    return function(it){ it.topic = label; return it; };
+  }
+
   var qExpr = document.getElementById('qExpr');
+  var qTopic = document.getElementById('qTopic');
   var qCounter = document.getElementById('qCounter');
   var progressFill = document.getElementById('progressFill');
   var answerInput = document.getElementById('answerInput');
   var answerForm = document.getElementById('answerForm');
   var feedback = document.getElementById('feedback');
   var nextBtn = document.getElementById('nextBtn');
+  var submitBtn = document.getElementById('submitBtn');
 
   function showQuestion(){
     var total = quizState.questions.length;
     var q = quizState.questions[quizState.index];
+    qTopic.textContent = q.topic || '';
     qCounter.textContent = 'Question ' + (quizState.index+1) + ' of ' + total;
-    qExpr.textContent = q.expr + ' = ?';
+    qExpr.textContent = q.expr + (q.type==='num' && !/[=?]/.test(q.expr) ? ' = ?' : (q.type==='num' && q.expr.indexOf('?')===-1 && q.expr.indexOf('=')===-1 ? ' = ?' : ''));
+    if(q.type === 'num' && q.expr.indexOf('?')===-1) qExpr.textContent = q.expr + ' = ?';
+    else qExpr.textContent = q.expr;
     progressFill.style.width = ((quizState.index)/total*100) + '%';
     answerInput.value = '';
     answerInput.className = 'answer-input';
+    if(q.type === 'pair'){
+      answerInput.placeholder = 'e.g. 12,13';
+    } else if(q.type === 'fraction'){
+      answerInput.placeholder = 'e.g. 3/8';
+    } else {
+      answerInput.placeholder = 'Your answer';
+    }
     feedback.textContent = '';
     feedback.className = 'feedback';
     nextBtn.style.display = 'none';
+    submitBtn.style.display = 'block';
     answerInput.disabled = false;
     quizState.answered = false;
     setTimeout(function(){ answerInput.focus(); }, 50);
@@ -605,14 +850,49 @@
     submitAnswer();
   });
 
+  function checkAnswer(q, raw){
+    if(q.type === 'pair'){
+      var parts = raw.split(',').map(function(s){return parseFloat(s.trim());}).filter(function(n){return !isNaN(n);});
+      if(parts.length !== 2) return false;
+      var sorted = parts.slice().sort(function(a,b){return a-b;});
+      var correctSorted = q.answer.slice().sort(function(a,b){return a-b;});
+      return sorted[0]===correctSorted[0] && sorted[1]===correctSorted[1];
+    }
+    if(q.type === 'fraction'){
+      raw = raw.trim();
+      var val;
+      if(raw.indexOf('/') !== -1){
+        var fp = raw.split('/');
+        if(fp.length !== 2) return false;
+        var num = parseFloat(fp[0]), den = parseFloat(fp[1]);
+        if(isNaN(num) || isNaN(den) || den===0) return false;
+        val = num/den;
+      } else {
+        val = parseFloat(raw);
+        if(isNaN(val)) return false;
+      }
+      return Math.abs(val - q.fVal) < 0.01;
+    }
+    // numeric
+    var user = parseFloat(raw);
+    if(isNaN(user)) return false;
+    return Math.abs(user - q.answer) < 0.05;
+  }
+
+  function displayAnswer(q){
+    if(q.type === 'pair') return q.answer.join(', ');
+    if(q.type === 'fraction') return q.answer;
+    return fmtNum(q.answer);
+  }
+
   function submitAnswer(){
     var q = quizState.questions[quizState.index];
     var raw = answerInput.value.trim();
     if(raw === ''){ answerInput.focus(); return; }
-    var user = parseFloat(raw);
-    var correct = Math.abs(user - q.answer) < 0.05;
+    var correct = checkAnswer(q, raw);
     quizState.answered = true;
     answerInput.disabled = true;
+    submitBtn.style.display = 'none';
 
     if(correct){
       quizState.score++;
@@ -622,7 +902,7 @@
     } else {
       answerInput.classList.add('incorrect');
       feedback.classList.add('incorrect');
-      feedback.textContent = 'Not quite — the answer is ' + fmtNum(q.answer);
+      feedback.textContent = 'Not quite — the answer is ' + displayAnswer(q);
     }
     nextBtn.style.display = 'block';
     nextBtn.focus();
