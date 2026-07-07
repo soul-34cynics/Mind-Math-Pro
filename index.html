@@ -221,6 +221,8 @@
 (function(){
   'use strict';
 
+  function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ var t=b; b=a%b; a=t; } return a; }
+
   /* ---------------- BASIC GENERATORS ---------------- */
   function genMultiplication(max, excludeMultipliers){
     var out=[];
@@ -260,77 +262,46 @@
     }
     return out;
   }
-  function genFractions(){
-    var denoms=[2,3,4,5,6,8,10];
-    var out=[];
-    denoms.forEach(function(d){
-      for(var n=1;n<d;n++){
-        var val = Math.round((n/d)*1000)/1000;
-        out.push({expr:n+'/'+d, answer:val, type:'num'});
-      }
-    });
-    return out;
-  }
-  // Reciprocals up to 12, both directions (percent->fraction, fraction->percent)
-  function genReciprocals(maxDenom, exclude){
-    maxDenom = maxDenom || 12;
-    exclude = exclude || [];
-    var out=[];
-    var seen={};
-    for(var n=2;n<=maxDenom;n++){
-      if(exclude.indexOf(n)!==-1) continue;
-      var pct = Math.round((100/n)*100)/100;
-      var key='1/'+n;
-      out.push({expr:key, answer:pct, type:'num'});
-      seen[key]=true;
-    }
-    var extraDenoms=[4,5,8];
-    extraDenoms.forEach(function(d){
-      if(d>maxDenom) return;
-      for(var num=1; num<d; num++){
-        var key2 = num+'/'+d;
-        if(seen[key2]) return;
-        var pct2 = Math.round((num/d*100)*100)/100;
-        out.push({expr:key2, answer:pct2, type:'num'});
-        seen[key2]=true;
-      }
-    });
-    return out;
-  }
+
+  // ---- Reciprocals as "multiples of nths" up to 12, deduped (no redundant reduced-form repeats) ----
+  // e.g. for d=12: 1/12,5/12,7/12,11/12 are kept (already in lowest terms as twelfths),
+  // but 2/12,3/12,4/12,6/12,8/12,9/12,10/12 are skipped since they reduce to a simpler
+  // fraction (1/6, 1/4, 1/3, 1/2, 2/3, 3/4, 5/6) already produced at a smaller denominator.
   function reciprocalBaseList(maxDenom, exclude){
-    // returns [{n,d,pct}]
     maxDenom = maxDenom || 12;
     exclude = exclude || [];
     var list=[];
     var seen={};
-    for(var n=2;n<=maxDenom;n++){
-      if(exclude.indexOf(n)!==-1) continue;
-      var pct = Math.round((100/n)*10000)/10000;
-      list.push({n:1,d:n,pct:pct});
-      seen['1/'+n]=true;
-    }
-    [4,5,8].forEach(function(d){
-      if(d>maxDenom) return;
-      for(var num=1; num<d; num++){
-        var key='1/'? null:null;
-        var k=num+'/'+d;
-        if(seen[k]) return;
-        var pct2 = Math.round((num/d*100)*10000)/10000;
-        list.push({n:num,d:d,pct:pct2});
-        seen[k]=true;
+    for(var d=2; d<=maxDenom; d++){
+      if(exclude.indexOf(d)!==-1) continue;
+      for(var k=1; k<d; k++){
+        var g = gcd(k,d);
+        var rn = k/g, rd = d/g;
+        var key = rn+'/'+rd;
+        if(seen[key]) continue; // redundant (already covered by a simpler fraction)
+        seen[key] = true;
+        var pct = Math.round((k/d*100)*10000)/10000;
+        list.push({n:k, d:d, pct:pct, val:k/d});
       }
-    });
+    }
     return list;
+  }
+  function genReciprocalsReview(maxDenom, exclude){
+    var base = reciprocalBaseList(maxDenom, exclude);
+    return base.map(function(it){
+      return {expr: it.n+'/'+it.d, answer: it.pct, type:'num'};
+    });
   }
   function genReciprocalsBothWays(maxDenom, exclude){
     var base = reciprocalBaseList(maxDenom, exclude);
     var out=[];
     base.forEach(function(it){
       out.push({expr:'What is '+it.n+'/'+it.d+' as a %?', answer:it.pct, type:'num'});
-      out.push({expr:'What fraction (n/d) equals '+it.pct+'%?', answer:it.n+'/'+it.d, type:'fraction', fVal: it.n/it.d});
+      out.push({expr:'What fraction (n/d) equals '+it.pct+'%?', answer:it.n+'/'+it.d, type:'fraction', fVal: it.val});
     });
     return out;
   }
+
   function genComplement100(exclude){
     exclude = exclude || [];
     var out=[];
@@ -420,8 +391,7 @@
     squares: genSquares(30),
     cubes: genCubes(15),
     powers: genPowers(2,12).concat(genPowers(3,8)),
-    fractions: genFractions(),
-    reciprocals: genReciprocals(12)
+    reciprocals: genReciprocalsReview(12)
   };
 
   var TOPIC_META = {
@@ -429,8 +399,7 @@
     squares: {label:'Squares', sub:'1² to 30²'},
     cubes: {label:'Cubes', sub:'1³ to 15³'},
     powers: {label:'Powers', sub:'Powers of 2 and 3'},
-    fractions: {label:'Fractions', sub:'Common fractions → decimals'},
-    reciprocals: {label:'Reciprocals %', sub:'1/n and common fractions as %'},
+    reciprocals: {label:'Reciprocals %', sub:'nths up to 12, redundant ones removed'},
     charts: {label:'Charts', sub:'Reference sheets & infographic tables'}
   };
 
@@ -511,6 +480,13 @@
       return;
     }
 
+    if(currentTopic === 'reciprocals'){
+      var noteWrap = document.createElement('div');
+      noteWrap.className = 'info-sentence';
+      noteWrap.textContent = 'Every nth up to twelfths, shown once in lowest terms (e.g. 2/12 is skipped since it equals 1/6, already listed).';
+      reviewContent.appendChild(noteWrap);
+    }
+
     var data = REVIEW_DATA[currentTopic];
     var isPercent = (currentTopic === 'reciprocals');
     var grid2 = document.createElement('div');
@@ -556,31 +532,27 @@
   }
 
   /* ---------------- QUIZ CONFIG ---------------- */
-  // Topics with a numeric "up to" range plus optional exclude list
   var RANGE_TOPICS = {
     multiplication: {label:'Multiplication', sub:'Tables 1 to N (×1 to ×20)', def:15, min:1, max:30, quick:[10,15,20,30], excludeHint:'Exclude multipliers, e.g. 1,2,10,11'},
     squares: {label:'Squares', sub:'1² up to N²', def:25, min:1, max:30, quick:[10,15,25,30], excludeHint:'Exclude numbers, e.g. 1,2'},
     cubes: {label:'Cubes', sub:'1³ up to N³', def:12, min:1, max:15, quick:[5,10,12,15], excludeHint:'Exclude numbers, e.g. 1,2'},
     powers2: {label:'Powers of 2', sub:'2^1 up to 2^N', def:12, min:1, max:16, quick:[8,10,12,16], excludeHint:'Exclude exponents, e.g. 1,2'},
     powers3: {label:'Powers of 3', sub:'3^1 up to 3^N', def:8, min:1, max:10, quick:[5,8,10], excludeHint:'Exclude exponents, e.g. 1,2'},
-    reciprocals: {label:'Reciprocals % (both ways)', sub:'1/n up to N, asked both directions', def:12, min:2, max:16, quick:[10,12,16], excludeHint:'Exclude denominators, e.g. 2,10'},
+    reciprocals: {label:'Reciprocals (both ways)', sub:'nths up to N, redundant ones removed, asked both directions', def:12, min:2, max:16, quick:[10,12,16], excludeHint:'Exclude denominators, e.g. 2,10'},
     factorPairs: {label:'Find the Factors', sub:'Given a product, enter the two factors', def:20, min:4, max:30, quick:[12,20,30], excludeHint:'Exclude numbers, e.g. 1'},
     sumProduct: {label:'Sum & Product', sub:'Given sum & product, find both numbers', def:20, min:4, max:30, quick:[12,20,30], excludeHint:'Exclude numbers, e.g. 1'}
   };
-  // Flat on/off topics (fixed data)
   var FLAT_TOPICS = {
-    fractions: {label:'Fractions', sub:'Common fractions → decimals'},
     complement100: {label:'Complements to 100', sub:'Given N, answer 100 - N'},
     percentage: {label:'Percentage Calculations', sub:'X% of Y, and A is what % of B'}
   };
-  // Count-based topics (addition / subtraction)
   var COUNT_TOPICS = {
     addition: {label:'Addition', sub:'Sum of N 4-digit numbers', defN:2},
     subtraction: {label:'Subtraction', sub:'Subtract N 4-digit numbers', defN:2}
   };
 
   var selectedTopics = {multiplication:true, squares:true, cubes:false, powers2:false, powers3:false,
-    reciprocals:false, factorPairs:false, sumProduct:false, fractions:false, complement100:false,
+    reciprocals:false, factorPairs:false, sumProduct:false, complement100:false,
     percentage:false, addition:false, subtraction:false};
   var topicRanges = {multiplication:15, squares:25, cubes:12, powers2:12, powers3:8, reciprocals:12, factorPairs:20, sumProduct:20};
   var topicExcludes = {multiplication:[1,2,10,11], squares:[], cubes:[], powers2:[], powers3:[], reciprocals:[], factorPairs:[], sumProduct:[]};
@@ -638,7 +610,6 @@
     rangeBlock.appendChild(rangeRow);
     rangeBlock.appendChild(quickPicks);
 
-    // Exclude text input, generic for every range topic
     var exLabel = document.createElement('div');
     exLabel.className = 'exclude-label';
     exLabel.textContent = meta.excludeHint || 'Exclude numbers (comma separated)';
@@ -656,7 +627,6 @@
     exRow.appendChild(exInput);
     rangeBlock.appendChild(exRow);
 
-    // Special: multiplication also gets quick exclude chips
     if(key === 'multiplication'){
       var exChips = document.createElement('div');
       exChips.className = 'exclude-chips';
@@ -774,7 +744,6 @@
     if(selectedTopics.reciprocals) pool = pool.concat(genReciprocalsBothWays(topicRanges.reciprocals, topicExcludes.reciprocals).map(withTopic('Reciprocals')));
     if(selectedTopics.factorPairs) pool = pool.concat(genFactorPairs(topicRanges.factorPairs, topicExcludes.factorPairs).map(withTopic('Find the Factors')));
     if(selectedTopics.sumProduct) pool = pool.concat(genSumProduct(topicRanges.sumProduct, topicExcludes.sumProduct).map(withTopic('Sum & Product')));
-    if(selectedTopics.fractions) pool = pool.concat(genFractions().map(withTopic('Fractions')));
     if(selectedTopics.complement100) pool = pool.concat(genComplement100().map(withTopic('Complements to 100')));
     if(selectedTopics.percentage) pool = pool.concat(genPercentage(20).map(withTopic('Percentage')));
     if(selectedTopics.addition) pool = pool.concat(genAddition(topicCounts.addition, 4, 20).map(withTopic('Addition')));
@@ -822,7 +791,6 @@
     var q = quizState.questions[quizState.index];
     qTopic.textContent = q.topic || '';
     qCounter.textContent = 'Question ' + (quizState.index+1) + ' of ' + total;
-    qExpr.textContent = q.expr + (q.type==='num' && !/[=?]/.test(q.expr) ? ' = ?' : (q.type==='num' && q.expr.indexOf('?')===-1 && q.expr.indexOf('=')===-1 ? ' = ?' : ''));
     if(q.type === 'num' && q.expr.indexOf('?')===-1) qExpr.textContent = q.expr + ' = ?';
     else qExpr.textContent = q.expr;
     progressFill.style.width = ((quizState.index)/total*100) + '%';
@@ -873,7 +841,6 @@
       }
       return Math.abs(val - q.fVal) < 0.01;
     }
-    // numeric
     var user = parseFloat(raw);
     if(isNaN(user)) return false;
     return Math.abs(user - q.answer) < 0.05;
