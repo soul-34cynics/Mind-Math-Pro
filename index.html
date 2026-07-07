@@ -267,7 +267,7 @@
   // e.g. for d=12: 1/12,5/12,7/12,11/12 are kept (already in lowest terms as twelfths),
   // but 2/12,3/12,4/12,6/12,8/12,9/12,10/12 are skipped since they reduce to a simpler
   // fraction (1/6, 1/4, 1/3, 1/2, 2/3, 3/4, 5/6) already produced at a smaller denominator.
-  function reciprocalBaseList(maxDenom, exclude){
+  function reciprocalBaseList(maxDenom, exclude, includeRedundant){
     maxDenom = maxDenom || 12;
     exclude = exclude || [];
     var list=[];
@@ -278,7 +278,7 @@
         var g = gcd(k,d);
         var rn = k/g, rd = d/g;
         var key = rn+'/'+rd;
-        if(seen[key]) continue; // redundant (already covered by a simpler fraction)
+        if(!includeRedundant && seen[key]) continue;
         seen[key] = true;
         var pct = Math.round((k/d*100)*10000)/10000;
         list.push({n:k, d:d, pct:pct, val:k/d});
@@ -292,7 +292,7 @@
       return {expr: it.n+'/'+it.d, answer: it.pct, type:'num'};
     });
   }
-  function genReciprocalsBothWays(maxDenom, exclude){
+  function genReciprocalsBothWays(maxDenom, exclude, true){
     var base = reciprocalBaseList(maxDenom, exclude);
     var out=[];
     base.forEach(function(it){
