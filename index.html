@@ -256,13 +256,15 @@
   }
 
   /* ---------------- BASIC GENERATORS ---------------- */
-  function genMultiplication(max, excludeMultipliers, multiplierMax){
+  function genMultiplication(maxA, multiplierMax, excludeA, includeA){
     var out=[];
-    excludeMultipliers = excludeMultipliers || [];
+    excludeA = excludeA || [];
+    includeA = includeA || [];
     multiplierMax = multiplierMax || 20;
-    for(var i=1;i<=max;i++){
+    for(var i=1;i<=maxA;i++){
+      if(includeA.length){ if(includeA.indexOf(i) === -1) continue; }
+      else if(excludeA.indexOf(i) !== -1) continue;
       for(var j=1;j<=multiplierMax;j++){
-        if(excludeMultipliers.indexOf(j) !== -1) continue;
         out.push({expr:i+' × '+j, answer:i*j, group:'× '+i, type:'num'});
       }
     }
@@ -716,7 +718,7 @@
 
   /* ---------------- QUIZ CONFIG ---------------- */
   var RANGE_TOPICS = {
-    multiplication: {label:'Multiplication', sub:'Tables 1 to N, × 1 to M (default M = 10)', def:15, min:1, max:30, quick:[10,15,20,30], excludeHint:'Exclude / Include multipliers, e.g. 1,2,10,11', chips:{from:1,to:20,prefix:'×'}},
+    multiplication: {label:'Multiplication', sub:'Tables A = 1 to N, each × 1 to M (default M = 10)', def:15, min:1, max:30, quick:[10,15,20,30], excludeHint:'Exclude / Include which tables (A), e.g. 15 → only 15×1…15×M'},
     squares: {label:'Squares', sub:'1² up to N²', def:25, min:1, max:30, quick:[10,15,25,30], excludeHint:'Exclude / Include numbers, e.g. 1,2'},
     cubes: {label:'Cubes', sub:'1³ up to N³', def:12, min:1, max:15, quick:[5,10,12,15], excludeHint:'Exclude / Include numbers, e.g. 1,2'},
     powers2: {label:'Powers of 2', sub:'2^1 up to 2^N', def:12, min:1, max:16, quick:[8,10,12,16], excludeHint:'Exclude / Include exponents, e.g. 1,2'},
@@ -1122,12 +1124,7 @@
     var pool = [];
 
     if(selectedTopics.multiplication){
-      var multExclude = topicExcludes.multiplication;
-      if(topicIncludes.multiplication && topicIncludes.multiplication.length){
-        var allM = []; for(var mm=1; mm<=20; mm++) allM.push(mm);
-        multExclude = allM.filter(function(n){ return topicIncludes.multiplication.indexOf(n) === -1; });
-      }
-      pool = pool.concat(genMultiplication(topicRanges.multiplication, multExclude, multiplierMax.multiplication).map(withTopic('Multiplication')));
+      pool = pool.concat(genMultiplication(topicRanges.multiplication, multiplierMax.multiplication, topicExcludes.multiplication, topicIncludes.multiplication).map(withTopic('Multiplication')));
     }
     if(selectedTopics.squares) pool = pool.concat(applyIncludeFilterGeneric(genSquares, topicRanges.squares, topicIncludes.squares, topicExcludes.squares).map(withTopic('Squares')));
     if(selectedTopics.cubes) pool = pool.concat(applyIncludeFilterGeneric(genCubes, topicRanges.cubes, topicIncludes.cubes, topicExcludes.cubes).map(withTopic('Cubes')));
