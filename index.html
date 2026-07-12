@@ -256,11 +256,12 @@
   }
 
   /* ---------------- BASIC GENERATORS ---------------- */
-  function genMultiplication(max, excludeMultipliers){
+  function genMultiplication(max, excludeMultipliers, multiplierMax){
     var out=[];
     excludeMultipliers = excludeMultipliers || [];
+    multiplierMax = multiplierMax || 20;
     for(var i=1;i<=max;i++){
-      for(var j=1;j<=20;j++){
+      for(var j=1;j<=multiplierMax;j++){
         if(excludeMultipliers.indexOf(j) !== -1) continue;
         out.push({expr:i+' × '+j, answer:i*j, group:'× '+i, type:'num'});
       }
@@ -585,7 +586,7 @@
     charts: {label:'Charts', sub:'Reference sheets & infographic tables'}
   };
 
-  var INFO_SENTENCE = "Multiplications upto 20x10 (20x20 desireable), Squares upto 25, Cubes upto 12, Powers of 2 till 12th power and Powers of 3 upto 8th power";
+  var INFO_SENTENCE = "Squares upto 25, Cubes upto 12, Powers of 2 till 12th power and Powers of 3 upto 8th power";
 
   var reviewTabs = document.getElementById('reviewTabs');
   var reviewContent = document.getElementById('reviewContent');
@@ -715,7 +716,7 @@
 
   /* ---------------- QUIZ CONFIG ---------------- */
   var RANGE_TOPICS = {
-    multiplication: {label:'Multiplication', sub:'Tables 1 to N (×1 to ×20)', def:15, min:1, max:30, quick:[10,15,20,30], excludeHint:'Exclude / Include multipliers, e.g. 1,2,10,11', chips:{from:1,to:20,prefix:'×'}},
+    multiplication: {label:'Multiplication', sub:'Tables 1 to N, × 1 to M (default M = 10)', def:15, min:1, max:30, quick:[10,15,20,30], excludeHint:'Exclude / Include multipliers, e.g. 1,2,10,11', chips:{from:1,to:20,prefix:'×'}},
     squares: {label:'Squares', sub:'1² up to N²', def:25, min:1, max:30, quick:[10,15,25,30], excludeHint:'Exclude / Include numbers, e.g. 1,2'},
     cubes: {label:'Cubes', sub:'1³ up to N³', def:12, min:1, max:15, quick:[5,10,12,15], excludeHint:'Exclude / Include numbers, e.g. 1,2'},
     powers2: {label:'Powers of 2', sub:'2^1 up to 2^N', def:12, min:1, max:16, quick:[8,10,12,16], excludeHint:'Exclude / Include exponents, e.g. 1,2'},
@@ -752,6 +753,7 @@
     fractionCompare:false, percentChange:false, mult3digitRandom:false, mult3digitNear:false,
     cubesTwoDigit:false, perfectSquareCheck:false, mult11to19:false, mult5_25_125:false};
   var topicRanges = {multiplication:15, squares:25, cubes:12, powers2:12, powers3:8, reciprocals:12, factorPairs:20, sumProduct:20, squares25to75:75, squares76to125:125};
+  var multiplierMax = {multiplication:10};
   var topicExcludes = {multiplication:[1,2,10,11], squares:[], cubes:[], powers2:[], powers3:[], reciprocals:[], factorPairs:[], sumProduct:[], squares25to75:[], squares76to125:[], cubesTwoDigit:[]};
   var topicIncludes = {multiplication:[], squares:[], cubes:[], powers2:[], powers3:[], reciprocals:[], factorPairs:[], sumProduct:[], squares25to75:[], squares76to125:[], cubesTwoDigit:[]};
   var topicCounts = {addition:2, subtraction:2};
@@ -809,6 +811,46 @@
       });
       rangeBlock.appendChild(rangeRow);
       rangeBlock.appendChild(quickPicks);
+    }
+
+    if(key === 'multiplication'){
+      var mmLabel = document.createElement('div');
+      mmLabel.className = 'exclude-label';
+      mmLabel.textContent = 'Multiply up to (× 1 to M) — default is 10, set to 20 for the full table';
+      rangeBlock.appendChild(mmLabel);
+
+      var mmRow = document.createElement('div');
+      mmRow.className = 'range-row';
+      mmRow.innerHTML = '<label>× up to:</label>';
+      var mmInput = document.createElement('input');
+      mmInput.type = 'number';
+      mmInput.min = 1;
+      mmInput.max = 20;
+      mmInput.value = multiplierMax.multiplication;
+      mmInput.addEventListener('input', function(){
+        var v = parseInt(mmInput.value, 10);
+        if(isNaN(v)) return;
+        if(v < 1) v = 1;
+        if(v > 20) v = 20;
+        multiplierMax.multiplication = v;
+      });
+      mmRow.appendChild(mmInput);
+
+      var mmQuick = document.createElement('div');
+      mmQuick.className = 'quick-picks';
+      [10, 12, 15, 20].forEach(function(q){
+        var qb = document.createElement('button');
+        qb.type = 'button';
+        qb.className = 'quick-pick';
+        qb.textContent = '×'+q;
+        qb.addEventListener('click', function(){
+          multiplierMax.multiplication = q;
+          mmInput.value = q;
+        });
+        mmQuick.appendChild(qb);
+      });
+      rangeBlock.appendChild(mmRow);
+      rangeBlock.appendChild(mmQuick);
     }
 
     var exLabel = document.createElement('div');
@@ -1085,7 +1127,7 @@
         var allM = []; for(var mm=1; mm<=20; mm++) allM.push(mm);
         multExclude = allM.filter(function(n){ return topicIncludes.multiplication.indexOf(n) === -1; });
       }
-      pool = pool.concat(genMultiplication(topicRanges.multiplication, multExclude).map(withTopic('Multiplication')));
+      pool = pool.concat(genMultiplication(topicRanges.multiplication, multExclude, multiplierMax.multiplication).map(withTopic('Multiplication')));
     }
     if(selectedTopics.squares) pool = pool.concat(applyIncludeFilterGeneric(genSquares, topicRanges.squares, topicIncludes.squares, topicExcludes.squares).map(withTopic('Squares')));
     if(selectedTopics.cubes) pool = pool.concat(applyIncludeFilterGeneric(genCubes, topicRanges.cubes, topicIncludes.cubes, topicExcludes.cubes).map(withTopic('Cubes')));
